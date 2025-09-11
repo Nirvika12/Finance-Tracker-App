@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, selectinload
+from fastapi import APIRouter, Depends, HTTPException, Query # type: ignore
+from sqlalchemy.orm import Session, selectinload# type: ignore
 from typing import Annotated
 from app.database import get_db
 from app.schema.transactions_schema import TransactionsCreate, TransactionRead, TransactionsUpdate
