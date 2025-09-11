@@ -1,0 +1,13 @@
+frontend/
+│── app.py                  # Entry point (handles login & routing)
+│── pages/
+│   └── 1_Transactions.py   # Add/view transactions
+│   └── 2_Budgets.py        # Set budgets
+│   └── 3_Reports.py        # Charts & analytics
+│   └── 4_Goals.py          # Savings goals
+│── components/
+│   └── charts.py           # Reusable chart functions
+│   └── tables.py           # Reusable styled tables
+│── utils/
+│   └── api_client.py       # Functions to call backend API
+│── assets/                 # (Optional) logos, icons, CSS styling
