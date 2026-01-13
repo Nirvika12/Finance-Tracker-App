@@ -10,6 +10,7 @@ class budget_model(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     monthly_limit = Column(Float, nullable=False)
+    month = Column(String, nullable=False)
     user = relationship("user_model", back_populates="budgets")
     category = relationship("category_model", back_populates="budgets")
 

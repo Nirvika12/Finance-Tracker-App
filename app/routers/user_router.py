@@ -1,32 +1,50 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.tables import user_model
-from app.schema.user_schema import UserCreate, UserUpdate
+from app.schema.user_schema import UserCreate, UserUpdate, UserRead
 from datetime import datetime
+from passlib.context import CryptContext
+
 
 router = APIRouter(prefix="/users",tags=['Users'])
 
-@router.get('/')
-async def get_users(db : Session = Depends(get_db)):
-    users = db.query(user_model).all()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-    if not users:
-        raise HTTPException(status_code=404, detail='No users found.')
-    return users
 
-@router.post('/')
-async def create_users(user : UserCreate, db : Session = Depends(get_db)):
-    existing_user = db.query(user_model).filter(user_model.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=404, detail='Email already exists')
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(plain_password, hashed_password)
+
+@router.post('/login')
+def login(request: UserRead, db: Session = Depends(get_db)):
+    print("Login attempt:", repr(request.email), repr(request.password))
+    user = db.query(user_model).filter(user_model.email == request.email).first()
+    if not user or not verify_password(request.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return {"message": "Login successful", "user_id": user.id, "name": user.name}
+
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+def signup(request : UserCreate, db: Session = Depends(get_db)):
+    user = db.query(user_model).filter(user_model.email == request.email).first()
+    if user:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    new_user = user_model(**user.model_dump(exclude_unset=True))
+    new_user = user_model(
+        name = request.name,
+        email = request.email,
+        password_hash = hash_password(request.password),
+        created_at = datetime.now(),
+        updated_at = datetime.now()
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    return new_user
+    return {"message": "User created successfully", "user_id": new_user.id}
 
 @router.put('/{user_id}')
 async def update_user(user_id : int, user : UserUpdate, db : Session = Depends(get_db)):

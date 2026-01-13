@@ -1,13 +1,12 @@
 from pydantic import BaseModel, EmailStr
-from app.schema.transactions_schema import TransactionRead
-#from app.schema.budget_schema import BudgetRead
 from datetime import datetime 
 from typing import Optional, List
+from app.schema.transaction_schema import TransactionRead
 
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
-    password_hash: str  
+    password: str  
 
     class Config:
         from_attribute = True
@@ -21,23 +20,19 @@ class UserUpdate(BaseModel):
         from_attribute = True
 
 class UserRead(BaseModel):
-    id: int
-    name: str
     email: str
-    transactions: List[TransactionRead] = []
+    password: str
 
     class Config:
         from_attributes = True
 
-# class UserRead(BaseModel):
-#     id: int
-#     name: str
-#     email: str
-#     created_at: datetime
-#     updated_at: datetime
-#     transactions: list["TransactionsRead"] = [] 
-#     budgets: list["BudgetRead"] = []
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    transactions: list[TransactionRead] = [] 
+    
 
-#     class Config:
-#         from_attribute = True
+    class Config:
+        from_attribute = True
 

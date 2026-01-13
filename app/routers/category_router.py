@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.database import get_db
-from app.models.tables import category_model
+from app.models.tables import category_model, user_model, transaction_model
 from app.schema.category_schema import CategoryRead, CategoryCreate
-from sqlalchemy.orm import Session
-
+from sqlalchemy.orm import Session 
+from datetime import datetime
 
 router = APIRouter(prefix="/category",tags=['Category'])
 
@@ -52,4 +52,27 @@ async def delete_category(category_id: int, db : Session = Depends(get_db)):
     return {"message": f"Category with id {category_id} deleted successfully"}
 
 
+@router.get('/category_spending')
+async def get_category_spending(user_id : int, month : str, db : Session = Depends(get_db)):
+    year, month_num = map(int, month.split("-"))
 
+    # Filter transactions for user & month
+    transactions = db.query(transaction_model).filter(
+        transaction_model.user_id == user_id,
+        transaction_model.date >= datetime(year, month_num, 1),
+        transaction_model.date < datetime(year, month_num + 1, 1) if month_num < 12 else datetime(year+1, 1, 1)
+    ).all()   
+
+    category_spending = {}
+    total_spent = 0     
+    for t in transactions:
+        if t.amount < 0:
+            category_spending[t.category] = category_spending.get(t.category, 0) + abs(t.amount)
+            total_spent += abs(t.amount)
+
+    return {
+        "user_id": user_id,
+        "month": month,
+        "category_spending": category_spending,
+        "total_spent": total_spent
+    }

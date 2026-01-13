@@ -13,14 +13,11 @@ class TransactionsCreate(BaseModel):
         from_attribute = True
 
 class TransactionRead(BaseModel):
-
     id : int
-    user_id : int
     amount : float
     description : str | None = None
     date : datetime
-    category_id : int
-    created_at : datetime
+    category_name: str 
 
     class Config:
         from_attribute = True
@@ -32,6 +29,14 @@ class TransactionsUpdate(BaseModel):
     amount : float
     description : str | None = None
     date : date
+
+    class Config:
+        from_attribute = True
+
+class TransactionsCategory(BaseModel):
+    amount : float
+    date : datetime
+    description : str
 
     class Config:
         from_attribute = True
