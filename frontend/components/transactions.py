@@ -175,13 +175,84 @@ def transactions_page(user_id):
             st.error(f"Server error: {e}")
 
 
+
     # --- Filter transactions by date ---
     st.subheader("Filter Transactions by Date")
     start_date = st.date_input("Start Date", date.today())
-    end_date = st.date_input("End Date", date.today(), key="end_date")
+    end_date = st.date_input("End Date", date.today(), key="end_date_filter")
+
     if st.button("Get Transactions by Date"):
-        response = requests.get(BASE_URL + f"/transactions/by-date?user_id={user_id}&start_date={start_date}&end_date={end_date}")
-        if response.status_code == 200:
-            st.write(response.json())
-        else:
-            st.error("No transactions found in this range.")
+        try:
+            response = requests.get(
+                BASE_URL + f"/transactions/by-date?start_date={start_date}&end_date={end_date}"
+            )
+
+            if response.status_code == 200:
+                transactions = response.json()
+
+                if not transactions:
+                    st.info("No transactions found in this range.")
+                else:
+                    st.subheader(f"Transactions from {start_date} to {end_date}")
+
+                    # Display headers
+                    cols = st.columns([2, 1, 1, 1, 1])
+                    headers = ["Title", "Amount", "Category", "Date", "Action"]
+                    for col, header in zip(cols, headers):
+                        col.markdown(f"**{header}**")
+
+                    # Display each transaction
+                    for i, txn in enumerate(transactions):
+                        txn_id = txn.get("id")
+                        title = txn.get("description", "")
+                        amount = txn.get("amount", 0)
+                        category = txn.get("category_name", txn.get("category", ""))
+                        date_str = txn.get("date", "")
+
+                        col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
+                        col1.write(title)
+                        col2.write(f"${amount}")
+                        col3.write(category)
+                        col4.write(date_str)
+
+                        # Unique keys for Delete/Update buttons
+                        if col5.button("Delete", key=f"del_date_{i}_{txn_id}"):
+                            try:
+                                del_resp = requests.delete(f"{BASE_URL}/transactions/delete/{txn_id}")
+                                if del_resp.status_code == 200:
+                                    st.success(f"Transaction {txn_id} deleted successfully!")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error(del_resp.json().get("detail", "Failed to delete transaction."))
+                            except Exception as e:
+                                st.error(f"Server error: {e}")
+
+                        if col5.button("Update", key=f"upd_date_{i}_{txn_id}"):
+                            with st.form(f"update_form_date_{i}_{txn_id}"):
+                                new_desc = st.text_input("Description", value=title)
+                                new_amount = st.number_input("Amount", value=amount)
+                                new_category = st.text_input("Category", value=category)
+                                new_date = st.date_input("Date", value=datetime.fromisoformat(date_str).date())
+                                submit = st.form_submit_button("Save")
+
+                                if submit:
+                                    payload = {
+                                        "description": new_desc,
+                                        "amount": new_amount,
+                                        "category_id": txn.get("category_id"),  # keep same category
+                                        "date": new_date.isoformat()
+                                    }
+                                    try:
+                                        upd_resp = requests.put(f"{BASE_URL}/transactions/update/{txn_id}", json=payload)
+                                        if upd_resp.status_code == 200:
+                                            st.success("Transaction updated successfully!")
+                                            st.experimental_rerun()
+                                        else:
+                                            st.error(upd_resp.json().get("detail", "Failed to update transaction."))
+                                    except Exception as e:
+                                        st.error(f"Server error: {e}")
+
+            else:
+                st.error("No transactions found in this range.")
+        except Exception as e:
+            st.error(f"Server error: {e}")

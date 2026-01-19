@@ -20,11 +20,14 @@ class UserUpdate(BaseModel):
         from_attribute = True
 
 class UserRead(BaseModel):
+    id: int
+    name: str
     email: str
-    password: str
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
-        from_attributes = True
+        from_attribute = True
 
 class UserResponse(BaseModel):
     id: int
@@ -36,3 +39,9 @@ class UserResponse(BaseModel):
     class Config:
         from_attribute = True
 
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+    class Config:
+        from_attribute = True

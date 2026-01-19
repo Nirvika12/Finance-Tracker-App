@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import date, datetime
+from datetime import date
 
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -9,80 +9,120 @@ def get_categories():
     try:
         response = requests.get(f"{BASE_URL}/category/")
         if response.status_code == 200:
-            data = response.json()
-            # Return just the names or full objects if needed
-            return data
+            return response.json()
         else:
             st.warning("No categories found.")
             return []
     except Exception as e:
         st.error(f"Error fetching categories: {e}")
         return []
+        
 
 def budget_tab(user_id):
     st.subheader("💰 Budget Tracker")
 
-    # --- 1️⃣ Current Month Overview ---
     today = date.today()
     current_month = today.strftime("%Y-%m")
 
-    try:
-        response = requests.post(
-            f"{BASE_URL}/budget-status/",
-            params={"user_id": user_id, "month": current_month, "category": "all", "amount": 0}
-        )
-        if response.status_code == 200:
-            overview = response.json()
-            st.markdown(f"### Budget Summary: {current_month}")
-            st.write(f"**Total Budget:** ${overview['amount']}")
-            st.write(f"**Total Spent:** ${overview['spent']}")
-            st.write(f"**Remaining:** ${overview['remaining']}")
-            st.progress(min(overview['progress'] / 100, 1.0))
+    categories = get_categories()
 
-            # Warning if over 80%
-            if overview['progress'] >= 80:
-                st.warning("⚠️ You're nearing your total budget limit!")
-        else:
-            st.info("No budget set for this month yet.")
-    except Exception as e:
-        st.error(f"Error fetching budget overview: {e}")
+    # -----------------------------
+    # 1️⃣ Current Month Overall Progress
+    # -----------------------------
+    if categories:
+        try:
+            # Fetch all budgets for current month
+            resp = requests.get(f"{BASE_URL}/budget/monthly-status/", params={"user_id": user_id, "month": current_month})
+            if resp.status_code == 200:
+                data = resp.json()
+                budgets = data.get("budgets", [])
+
+                total_budget = sum(b["amount"] for b in budgets)
+                total_spent = sum(b["spent"] for b in budgets)
+                remaining = total_budget - total_spent
+                progress = round((total_spent / total_budget) * 100, 2) if total_budget > 0 else 0
+
+                st.markdown(f"### Current Month Overview ({current_month})")
+                st.write(f"**Total Budget:** ${total_budget}")
+                st.write(f"**Total Spent:** ${total_spent}")
+                st.write(f"**Remaining:** ${remaining}")
+                st.progress(min(progress / 100, 1.0))
+
+                if total_budget == 0:
+                    st.info("No budgets set for this month yet.")
+                elif remaining < 0:
+                    st.error("🚨 You have exceeded your total monthly budget!")
+                elif progress >= 80:
+                    st.warning("⚠️ You're nearing your total monthly budget limit!")
+
+            else:
+                st.info("No budget data available for this month.")
+        except Exception as e:
+            st.error(f"Error fetching current month budget: {e}")
 
     st.markdown("---")
 
-    # --- 2️⃣ Filter by Category and Month ---
+    # -----------------------------
+    # 2️⃣ Filter by Category / Month
+    # -----------------------------
     st.subheader("🔍 Filter Budget by Category / Month")
 
-    categories = get_categories() 
-    category_names = [cat['name'] for cat in categories]
+    if not categories:
+        st.info("No categories available for filtering.")
+        return
+
+    category_names = ["All"] + [cat["name"] for cat in categories]  # Add "All" option
     filter_category = st.selectbox("Category", category_names)
-    category_id = next((cat['id'] for cat in categories if cat['name'] == filter_category), None)
-    
     filter_month = st.text_input("Month (YYYY-MM)", value=current_month)
 
     if st.button("Show Budget Status", key="filter_btn"):
         try:
-            payload = {
-                "user_id": user_id,
-                "category_id": category_id,
-                "month": filter_month,
-            }
-            resp = requests.get(f"{BASE_URL}/budget/budget-status/", params=payload)
+            # Fetch all budgets for the selected month
+            resp = requests.get(f"{BASE_URL}/budget/monthly-status/", params={"user_id": user_id, "month": filter_month})
             if resp.status_code == 200:
                 data = resp.json()
-                st.write(f"### Budget Details for {filter_category} - {filter_month}")
-                st.write(f"**Budget:** ${data['amount']}")
-                st.write(f"**Spent:** ${data['spent']}")
-                st.write(f"**Remaining:** ${data['remaining']}")
-                st.progress(min(data['progress'] / 100, 1.0))
+                budgets = data.get("budgets", [])
 
-                if data['progress'] >= 80:
-                    st.warning("⚠️ Approaching budget limit for this category!")
+                # Filter by category if not "All"
+                if filter_category != "All":
+                    cat_obj = next((c for c in categories if c["name"] == filter_category), None)
+                    if cat_obj:
+                        budgets = [b for b in budgets if b["category_id"] == cat_obj["id"]]
+
+                if not budgets:
+                    st.info("No budget found for this selection.")
+                else:
+                    st.write(f"### Budget Details - {filter_category} / {filter_month}")
+                    
+                    for b in budgets:
+                        cat_name = next((c["name"] for c in categories if c["id"] == b["category_id"]), "Unknown")
+
+                        # Category header
+                        st.subheader(cat_name)
+
+                        # Budget details
+                        st.write(f"**Budget:** ${b['amount']:.2f}")
+                        st.write(f"**Spent:** ${b['spent']:.2f}")
+                        st.write(f"**Remaining:** ${b['remaining']:.2f}")
+
+                        # Progress bar
+                        st.progress(min(b["progress"] / 100, 1.0))
+
+                        # Warnings / Errors
+                        if b["progress"] >= 80:
+                            st.warning(f"⚠️ Approaching budget limit for {cat_name}!")
+                        if b["remaining"] < 0:
+                            st.error(f"🚨 Budget exceeded for {cat_name}!")
+
+                        # Add a divider between categories
+                        st.markdown("---")
+
             else:
-                st.info("No budget found for this selection.")
+                st.error("Failed to fetch budget data.")
+
         except Exception as e:
             st.error(f"Error fetching filtered budget: {e}")
 
-    st.markdown("---")
 
     # --- 3️⃣ Add / Update Budget ---
     st.subheader("➕ Add / Update Budget")
@@ -91,11 +131,12 @@ def budget_tab(user_id):
         new_month = st.text_input("Month (YYYY-MM)", value=current_month)
         new_amount = st.number_input("Budget Amount", min_value=0.0)
         submit_budget = st.form_submit_button("Save / Update Budget")
+        new_category_id = next((cat['id'] for cat in categories if cat['name'] == new_category), None)
 
         if submit_budget:
             payload = {
                 "user_id": user_id,
-                "category_id": category_id,
+                "category_id": new_category_id,
                 "month": new_month,
                 "monthly_limit": new_amount
             }

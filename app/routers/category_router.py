@@ -53,11 +53,11 @@ async def delete_category(category_id: int, db : Session = Depends(get_db)):
 
 
 @router.get('/category_spending')
-async def get_category_spending(user_id : int, month : str, db : Session = Depends(get_db)):
+async def get_category_spending(user_id: int, month: str, db: Session = Depends(get_db)):
     year, month_num = map(int, month.split("-"))
 
     # Filter transactions for user & month
-    transactions = db.query(transaction_model).filter(
+    transactions = db.query(transaction_model).join(category_model).filter(
         transaction_model.user_id == user_id,
         transaction_model.date >= datetime(year, month_num, 1),
         transaction_model.date < datetime(year, month_num + 1, 1) if month_num < 12 else datetime(year+1, 1, 1)
@@ -65,10 +65,16 @@ async def get_category_spending(user_id : int, month : str, db : Session = Depen
 
     category_spending = {}
     total_spent = 0     
+
     for t in transactions:
-        if t.amount < 0:
-            category_spending[t.category] = category_spending.get(t.category, 0) + abs(t.amount)
-            total_spent += abs(t.amount)
+        # Determine if this transaction is an expense based on the category flag
+        if t.category and t.category.is_expense:  
+            amount = abs(t.amount)  # treat as expense
+            category_spending[t.category.name] = category_spending.get(t.category.name, 0) + amount
+            total_spent += amount
+        else:
+            # For income, just skip or handle differently if needed
+            pass
 
     return {
         "user_id": user_id,

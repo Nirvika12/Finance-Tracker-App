@@ -1,10 +1,13 @@
 import streamlit as st
 import requests
-import base64
+from datetime import datetime, date
 from components.transactions import transactions_page 
 from components.budgets import budget_tab
+from components.dashboard import dashboard_page
+from components.user import profile_page
 
 
+month = datetime.today().strftime("%Y-%m")
 
 # --- Initialize session state ---
 if "logged_in" not in st.session_state:
@@ -98,15 +101,13 @@ def dashboard_app():
     tab = st.sidebar.radio("Go to:", ["Profile", "Dashboard", "Transactions", "Budget"])
 
     if tab == "Dashboard":
-        st.subheader("📊 Dashboard")
-        st.write("Overview of your finances will appear here.")
-    
+        dashboard_page(st.session_state.user_id)
+      
     elif tab == "Transactions":
         transactions_page(st.session_state.user_id)
     
     elif tab == "Profile":
-        st.subheader("👤 User Profile")
-        st.write("Profile details go here...")
+        profile_page(st.session_state.user_id)
 
     elif tab == "Budget":
         st.subheader("💰 Monthly Budget Overview")

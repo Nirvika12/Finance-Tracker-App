@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.tables import user_model
-from app.schema.user_schema import UserCreate, UserUpdate, UserRead
+from app.schema.user_schema import UserCreate, UserUpdate, UserRead, UserLogin
 from datetime import datetime
 from passlib.context import CryptContext
 
@@ -19,7 +19,7 @@ def verify_password(plain_password: str, hashed_password: str):
     return pwd_context.verify(plain_password, hashed_password)
 
 @router.post('/login')
-def login(request: UserRead, db: Session = Depends(get_db)):
+def login(request: UserLogin, db: Session = Depends(get_db)):
     print("Login attempt:", repr(request.email), repr(request.password))
     user = db.query(user_model).filter(user_model.email == request.email).first()
     if not user or not verify_password(request.password, user.password_hash):
@@ -69,4 +69,9 @@ async def update_user(user_id : int, user : UserUpdate, db : Session = Depends(g
 
     return {"message": "User updated successfully", "user": db_user}
 
-#selectinload , withloadercritieria, 
+@router.get("/{user_id}", response_model=UserRead)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(user_model).filter(user_model.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user

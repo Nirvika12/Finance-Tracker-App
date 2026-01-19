@@ -18,6 +18,7 @@ class category_model(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, autoincrement = True, index=True)
     name = Column(String, unique=True, nullable=False)
+    is_expense = Column(Integer, nullable=False, default=1) 
 
     transactions = relationship("transaction_model", back_populates="category")
     budgets = relationship("budget_model", back_populates="category", cascade="all, delete-orphan")
