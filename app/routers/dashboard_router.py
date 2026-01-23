@@ -8,7 +8,7 @@ from app.models.tables import user_model
 
 router = APIRouter(prefix="/dashboard", tags=['Dashboard'])
 
-# --- 1️⃣ Dashboard KPIs: Balance, Income, Expenses, Remaining Budget ---
+# --- Dashboard KPIs: Balance, Income, Expenses, Remaining Budget ---
 @router.get("/kpis/")
 def get_dashboard_kpis(user_id: int, month: str = None, db: Session = Depends(get_db)):
     """
@@ -56,7 +56,7 @@ def get_dashboard_kpis(user_id: int, month: str = None, db: Session = Depends(ge
     }
 
 
-# --- 3️⃣ Expense by Category ---
+# --- Expense by Category ---
 @router.get("/expenses-category/")
 def get_expenses_by_category(user_id: int, start_date: date = None, end_date: date = None, db: Session = Depends(get_db)):
     if not start_date:
@@ -83,7 +83,7 @@ def get_expenses_by_category(user_id: int, start_date: date = None, end_date: da
         })
     return result
 
-# --- 4️⃣ Income vs Expenses Over Time ---
+# --- Income vs Expenses Over Time ---
 @router.get("/income-expenses/")
 def get_income_expenses_over_time(user_id: int, start_date: date = None, end_date: date = None, db: Session = Depends(get_db)):
     if not start_date:
@@ -109,7 +109,7 @@ def get_income_expenses_over_time(user_id: int, start_date: date = None, end_dat
     result = [{"date": k, "income": v["Income"], "expense": v["Expense"]} for k, v in sorted(data.items())]
     return result
 
-# --- 5️⃣ Latest Transactions ---
+# --- Latest Transactions ---
 @router.get("/latest/")
 def get_latest_transactions(user_id: int, limit: int = 5, db: Session = Depends(get_db)):
     transactions = db.query(transaction_model).filter(

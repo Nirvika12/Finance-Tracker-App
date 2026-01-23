@@ -110,12 +110,7 @@ def dashboard_app():
         profile_page(st.session_state.user_id)
 
     elif tab == "Budget":
-        st.subheader("💰 Monthly Budget Overview")
-        #budget_limit = 
-       # current_spending = 
-
-        #st.progress(min(current_spending / budget_limit, 1.0))
-        #st.write(f"Spent: ${current_spending} / ${budget_limit}")   
+        st.subheader("💰 Monthly Budget Overview") 
         budget_tab(st.session_state.user_id)
 
     # Logout in sidebar

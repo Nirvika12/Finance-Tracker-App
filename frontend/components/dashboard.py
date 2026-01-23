@@ -12,7 +12,7 @@ st.set_page_config(page_title="Finance Dashboard", layout="wide")
 def dashboard_page(user_id):
 
     # -------------------------------
-    # 1️⃣ Fetch Data from APIs
+    # Fetch Data from APIs
     # -------------------------------
     @st.cache_data
     def fetch_transactions(user_id):
@@ -42,7 +42,7 @@ def dashboard_page(user_id):
         return pd.DataFrame()
 
     # -------------------------------
-    # 2️⃣ Load transactions & filter
+    #  Load transactions & filter
     # -------------------------------
     transactions = fetch_transactions(user_id)
     if transactions.empty:
@@ -74,7 +74,7 @@ def dashboard_page(user_id):
     categories = fetch_categories()
 
     # -------------------------------
-    # 3️⃣ Top KPIs
+    # Top KPIs
     # -------------------------------
     st.title(f"💰 Finance Dashboard - {selected_month}")
 
@@ -104,7 +104,7 @@ def dashboard_page(user_id):
 
 
     # -------------------------------
-    # 4️⃣ Charts
+    # Charts
     # -------------------------------
     st.subheader("Expenses by Category")
     expense_data = filtered_txn[filtered_txn['Type']=='Expense'].groupby('category_name')['amount'].sum().abs().reset_index()
@@ -134,7 +134,7 @@ def dashboard_page(user_id):
     st.altair_chart(pie_chart, use_container_width=True)
 
     # -------------------------------
-    # 5️⃣ Recent Transactions Table
+    #  Recent Transactions Table
     # -------------------------------
     st.subheader("Recent Transactions")
     st.dataframe(filtered_txn.sort_values('Date', ascending=False).head(10))

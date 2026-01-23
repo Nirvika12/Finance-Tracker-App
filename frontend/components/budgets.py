@@ -27,7 +27,7 @@ def budget_tab(user_id):
     categories = get_categories()
 
     # -----------------------------
-    # 1️⃣ Current Month Overall Progress
+    # Current Month Overall Progress
     # -----------------------------
     if categories:
         try:
@@ -63,7 +63,7 @@ def budget_tab(user_id):
     st.markdown("---")
 
     # -----------------------------
-    # 2️⃣ Filter by Category / Month
+    # Filter by Category / Month
     # -----------------------------
     st.subheader("🔍 Filter Budget by Category / Month")
 
@@ -124,7 +124,7 @@ def budget_tab(user_id):
             st.error(f"Error fetching filtered budget: {e}")
 
 
-    # --- 3️⃣ Add / Update Budget ---
+    # --- Add / Update Budget ---
     st.subheader("➕ Add / Update Budget")
     with st.form("budget_form"):
         new_category = st.selectbox("Category", category_names)
@@ -145,7 +145,6 @@ def budget_tab(user_id):
                 if resp.status_code in [200, 201]:
                     data = resp.json()
                     st.success(f"✅ Budget for {new_category} in {new_month} saved successfully!")
-                   # st.write("Budget Status:", data.get("budget", data))
                 else:
                     st.error(resp.json().get("detail", "Failed to save budget."))
             except Exception as e:

@@ -64,7 +64,7 @@ def profile_page(user_id):
             else:
                 try:
                     payload = {
-                        "password_hash": new_password  # FastAPI will hash it server-side
+                        "password_hash": new_password  
                     }
                     resp = requests.put(f"{BASE_URL}/users/{user_id}", json=payload)
                     if resp.status_code == 200:

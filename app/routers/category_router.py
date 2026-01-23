@@ -69,11 +69,11 @@ async def get_category_spending(user_id: int, month: str, db: Session = Depends(
     for t in transactions:
         # Determine if this transaction is an expense based on the category flag
         if t.category and t.category.is_expense:  
-            amount = abs(t.amount)  # treat as expense
+            amount = abs(t.amount)  # expense
             category_spending[t.category.name] = category_spending.get(t.category.name, 0) + amount
             total_spent += amount
         else:
-            # For income, just skip or handle differently if needed
+            # For income, no operations needed
             pass
 
     return {

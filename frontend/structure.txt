@@ -3,8 +3,8 @@ frontend/
 │── pages/
 │   └── 1_Transactions.py   # Add/view transactions
 │   └── 2_Budgets.py        # Set budgets
-│   └── 3_Reports.py        # Charts & analytics
-│   └── 4_Goals.py          # Savings goals
+│   └── 3_Dashboard.py      # Charts & analytics
+│   └── 4_User.py           # User profile
 │── components/
 │   └── charts.py           # Reusable chart functions
 │   └── tables.py           # Reusable styled tables
