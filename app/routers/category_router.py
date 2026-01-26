@@ -4,6 +4,7 @@ from app.models.tables import category_model, user_model, transaction_model
 from app.schema.category_schema import CategoryRead, CategoryCreate
 from sqlalchemy.orm import Session 
 from datetime import datetime
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/category",tags=['Category'])
 
@@ -53,12 +54,12 @@ async def delete_category(category_id: int, db : Session = Depends(get_db)):
 
 
 @router.get('/category_spending')
-async def get_category_spending(user_id: int, month: str, db: Session = Depends(get_db)):
+async def get_category_spending(month: str, db: Session = Depends(get_db),current_user_id: int = Depends(get_current_user)):
     year, month_num = map(int, month.split("-"))
 
     # Filter transactions for user & month
     transactions = db.query(transaction_model).join(category_model).filter(
-        transaction_model.user_id == user_id,
+        transaction_model.user_id == current_user_id,
         transaction_model.date >= datetime(year, month_num, 1),
         transaction_model.date < datetime(year, month_num + 1, 1) if month_num < 12 else datetime(year+1, 1, 1)
     ).all()   
@@ -77,7 +78,7 @@ async def get_category_spending(user_id: int, month: str, db: Session = Depends(
             pass
 
     return {
-        "user_id": user_id,
+        "user_id": current_user_id,
         "month": month,
         "category_spending": category_spending,
         "total_spent": total_spent

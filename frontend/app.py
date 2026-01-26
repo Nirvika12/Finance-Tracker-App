@@ -5,19 +5,53 @@ from components.transactions import transactions_page
 from components.budgets import budget_tab
 from components.dashboard import dashboard_page
 from components.user import profile_page
+from dotenv import load_dotenv
+import os 
+from jose import jwt, JWTError
 
 
+load_dotenv()
+
+SECRET_KEY_TOKEN = os.getenv("SECRET_KEY_TOKEN")
+
+SECRET_KEY = SECRET_KEY_TOKEN
+ALGORITHM = "HS256"
 month = datetime.today().strftime("%Y-%m")
+BASE_URL = os.environ.get("API_URL", "http://127.0.0.1:8000")
 
-# --- Initialize session state ---
+
+def get_user_from_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        return int(user_id)
+    except JWTError:
+        return None
+
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-if "user_id" not in st.session_state:
     st.session_state.user_id = None
-if "login_error" not in st.session_state:
-    st.session_state.login_error = ""
+    st.session_state.user_name = None
+    st.session_state.token = None
 
-BASE_URL = "http://127.0.0.1:8000"
+# Check token validity on reload
+if st.session_state.token and not st.session_state.logged_in:
+    user_id = get_user_from_token(st.session_state.token)
+    if user_id:
+        st.session_state.logged_in = True
+        st.session_state.user_id = user_id
+        # Optional: fetch user name from API
+        try:
+            response = requests.get(f"{BASE_URL}/users/me", headers={"Authorization": f"Bearer {st.session_state.token}"})
+            if response.status_code == 200:
+                st.session_state.user_name = response.json()["name"]
+        except:
+            pass
+    else:
+        st.session_state.clear()
+
 
 # --- Page config ---
 st.set_page_config(
@@ -56,6 +90,8 @@ def auth_page():
                             user_data = response.json()
                             st.session_state.logged_in = True
                             st.session_state.user_id = user_data.get("user_id")
+                            st.session_state.user_name = user_data["name"]
+                            st.session_state.token = user_data["access_token"]
                             st.success("Login successful! 🎉")
                             st.rerun()
 
@@ -96,27 +132,27 @@ def auth_page():
 # --- Main Dashboard App ---
 def dashboard_app():
     st.markdown("<h1 style='text-align:center; color:#4CAF50;'>💰 Finance Tracker Dashboard</h1>", unsafe_allow_html=True)
-    st.write(f"Welcome, User ID: {st.session_state.user_id}")
+    st.write(f"Welcome, {st.session_state.user_name}")
 
     tab = st.sidebar.radio("Go to:", ["Profile", "Dashboard", "Transactions", "Budget"])
 
     if tab == "Dashboard":
-        dashboard_page(st.session_state.user_id)
+        dashboard_page()
       
     elif tab == "Transactions":
-        transactions_page(st.session_state.user_id)
+        transactions_page()
     
     elif tab == "Profile":
-        profile_page(st.session_state.user_id)
+        profile_page()
 
     elif tab == "Budget":
         st.subheader("💰 Monthly Budget Overview") 
-        budget_tab(st.session_state.user_id)
+        budget_tab()
 
     # Logout in sidebar
     if st.sidebar.button("🚪 Logout"):
-        st.session_state.logged_in = False
-        st.session_state.user_id = None
+        st.session_state.clear()
+        st.switch_page("pages/login.py")
         st.rerun()
 
 

@@ -1,15 +1,24 @@
 import streamlit as st
 import requests
+import os
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("API_URL", "http://127.0.0.1:8000")
 
-def profile_page(user_id):
+def get_auth_headers():
+    """Returns headers with JWT token for authenticated requests."""
+    token = st.session_state.get("token")
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    return {}
+
+def profile_page():
     """Displays user profile info and allows updating name/email/password"""
+
+    # --- Fetch current user info ---
     try:
-        # Fetch user info from API
-        response = requests.get(f"{BASE_URL}/users/{user_id}")
-        if response.status_code == 200:
-            user_data = response.json()
+        resp = requests.get(f"{BASE_URL}/users/me", headers=get_auth_headers())
+        if resp.status_code == 200:
+            user_data = resp.json()
         else:
             st.error("Failed to fetch user data")
             return
@@ -26,22 +35,26 @@ def profile_page(user_id):
     st.markdown("---")
     st.subheader("✏️ Update Profile")
 
-    # Form to update name/email
+    # --- Update name/email form ---
     with st.form("update_profile_form"):
         new_name = st.text_input("Name", value=user_data.get('name', ''))
         new_email = st.text_input("Email", value=user_data.get('email', ''))
         submitted = st.form_submit_button("Update Profile")
+
         if submitted:
             payload = {}
             if new_name != user_data.get('name'):
                 payload['name'] = new_name
             if new_email != user_data.get('email'):
                 payload['email'] = new_email
+
             if payload:
                 try:
-                    resp = requests.put(f"{BASE_URL}/users/{user_id}", json=payload)
+                    resp = requests.put(f"{BASE_URL}/users/me", json=payload, headers=get_auth_headers())
                     if resp.status_code == 200:
                         st.success("✅ Profile updated successfully!")
+                        # Optionally update session state
+                        st.session_state.user_name = new_name
                     else:
                         st.error(resp.json().get("detail", "Failed to update profile"))
                 except Exception as e:
@@ -52,21 +65,20 @@ def profile_page(user_id):
     st.markdown("---")
     st.subheader("🔒 Change Password")
 
-    # Form to change password
+    # --- Change password form ---
     with st.form("change_password_form"):
         old_password = st.text_input("Old Password", type="password")
         new_password = st.text_input("New Password", type="password")
         confirm_password = st.text_input("Confirm New Password", type="password")
         submitted_pass = st.form_submit_button("Update Password")
+
         if submitted_pass:
             if new_password != confirm_password:
                 st.warning("Passwords do not match!")
             else:
                 try:
-                    payload = {
-                        "password_hash": new_password  
-                    }
-                    resp = requests.put(f"{BASE_URL}/users/{user_id}", json=payload)
+                    payload = {"password_hash": new_password}
+                    resp = requests.put(f"{BASE_URL}/users/me/password", json=payload, headers=get_auth_headers())
                     if resp.status_code == 200:
                         st.success("✅ Password updated successfully!")
                     else:

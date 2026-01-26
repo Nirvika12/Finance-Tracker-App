@@ -18,6 +18,7 @@ class TransactionRead(BaseModel):
     description : str | None = None
     date : datetime
     category_name: str 
+    is_expense: bool 
 
     class Config:
         from_attribute = True

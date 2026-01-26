@@ -1,13 +1,19 @@
 import streamlit as st
 import requests
 from datetime import date
+import os
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("API_URL", "http://127.0.0.1:8000")
 
+def get_auth_headers():
+    token = st.session_state.get("token")
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    return {}
 
 def get_categories():
     try:
-        response = requests.get(f"{BASE_URL}/category/")
+        response = requests.get(f"{BASE_URL}/category/", headers=get_auth_headers())
         if response.status_code == 200:
             return response.json()
         else:
@@ -18,7 +24,7 @@ def get_categories():
         return []
         
 
-def budget_tab(user_id):
+def budget_tab():
     st.subheader("💰 Budget Tracker")
 
     today = date.today()
@@ -32,7 +38,7 @@ def budget_tab(user_id):
     if categories:
         try:
             # Fetch all budgets for current month
-            resp = requests.get(f"{BASE_URL}/budget/monthly-status/", params={"user_id": user_id, "month": current_month})
+            resp = requests.get(f"{BASE_URL}/budget/monthly-status/", params={"month": current_month}, headers=get_auth_headers())
             if resp.status_code == 200:
                 data = resp.json()
                 budgets = data.get("budgets", [])
@@ -78,7 +84,8 @@ def budget_tab(user_id):
     if st.button("Show Budget Status", key="filter_btn"):
         try:
             # Fetch all budgets for the selected month
-            resp = requests.get(f"{BASE_URL}/budget/monthly-status/", params={"user_id": user_id, "month": filter_month})
+            resp = requests.get(f"{BASE_URL}/budget/monthly-status/", params={"month": current_month}, headers=get_auth_headers())
+
             if resp.status_code == 200:
                 data = resp.json()
                 budgets = data.get("budgets", [])
@@ -135,13 +142,12 @@ def budget_tab(user_id):
 
         if submit_budget:
             payload = {
-                "user_id": user_id,
                 "category_id": new_category_id,
                 "month": new_month,
                 "monthly_limit": new_amount
             }
             try:
-                resp = requests.post(f"{BASE_URL}/budget/create-or-update/", json=payload)
+                resp = requests.post(f"{BASE_URL}/budget/create-or-update/", json=payload,headers=get_auth_headers())
                 if resp.status_code in [200, 201]:
                     data = resp.json()
                     st.success(f"✅ Budget for {new_category} in {new_month} saved successfully!")

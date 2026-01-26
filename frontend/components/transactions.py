@@ -2,19 +2,22 @@
 import streamlit as st
 import requests
 from datetime import date, datetime
+import os
 
-BASE_URL = "http://127.0.0.1:8000/"
+BASE_URL = os.environ.get("API_URL", "http://127.0.0.1:8000")
 
 st.set_page_config(layout="wide")
 
 
+# ---------------------------
+# Get categories
+# ---------------------------
 def get_categories():
+    headers = {"Authorization": f"Bearer {st.session_state.token}"}
     try:
-        response = requests.get(f"{BASE_URL}/category/")
+        response = requests.get(f"{BASE_URL}/category/", headers=headers)
         if response.status_code == 200:
-            data = response.json()
-            # Return just the names or full objects if needed
-            return data
+            return response.json()
         else:
             st.warning("No categories found.")
             return []
@@ -22,36 +25,42 @@ def get_categories():
         st.error(f"Error fetching categories: {e}")
         return []
 
-def transactions_page(user_id):
+
+# ---------------------------
+# Transactions Page
+# ---------------------------
+def transactions_page():
+    if not st.session_state.token:
+        st.error("You must be logged in to view transactions.")
+        return
+
+    headers = {"Authorization": f"Bearer {st.session_state.token}"}
+
     st.title("Transactions Dashboard")
 
-    # --- Get all transactions ---
+    # ---------------------------
+    # Fetch all transactions
+    # ---------------------------
     try:
-        response = requests.get(f"{BASE_URL}/transactions/{user_id}")  # Adjust your API endpoint
-        
+        response = requests.get(f"{BASE_URL}/transactions/me", headers=headers)
         if response.status_code == 200:
-            transactions = response.json()
+            transactions = response.json() or []
 
-            if not transactions:
-                st.info("No transactions found.")
-                return
-        
+            # Sort by date descending
             transactions_sorted = sorted(
-            transactions, key=lambda x: datetime.fromisoformat(x['date']), reverse=True
+                transactions, key=lambda x: datetime.fromisoformat(x['date']), reverse=True
             )
             latest_transactions = transactions_sorted[:5]
 
-
             st.subheader("📝 Latest 5 Transactions")
 
-            # Display headers
+            # Table headers
             cols = st.columns([2, 1, 1, 1, 1])
-            headers = ["Title", "Amount", "Category", "Date", "Action"]
-            for col, header in zip(cols, headers):
+            headers_list = ["Title", "Amount", "Category", "Date", "Action"]
+            for col, header in zip(cols, headers_list):
                 col.markdown(f"**{header}**")
 
-            # Display each transaction
-            for txn in latest_transactions:
+            for i, txn in enumerate(latest_transactions):
                 txn_id = txn.get("id")
                 title = txn.get("description", "")
                 amount = txn.get("amount", 0)
@@ -64,18 +73,19 @@ def transactions_page(user_id):
                 col3.write(category)
                 col4.write(date_str)
 
-                # Actions: Update / Delete
+                # Delete button
                 if col5.button("Delete", key=f"del_{txn_id}"):
                     try:
-                        del_resp = requests.delete(f"{BASE_URL}/transactions/delete/{txn_id}")
+                        del_resp = requests.delete(f"{BASE_URL}/transactions/delete/{txn_id}", headers=headers)
                         if del_resp.status_code == 200:
                             st.success(f"Transaction {txn_id} deleted successfully!")
-                            st.rerun()  
+                            st.experimental_rerun()
                         else:
                             st.error(del_resp.json().get("detail", "Failed to delete transaction."))
                     except Exception as e:
                         st.error(f"Server error: {e}")
 
+                # Update button
                 if col5.button("Update", key=f"upd_{txn_id}"):
                     with st.form(f"update_form_{txn_id}"):
                         new_desc = st.text_input("Description", value=title)
@@ -88,29 +98,33 @@ def transactions_page(user_id):
                             payload = {
                                 "description": new_desc,
                                 "amount": new_amount,
-                                "category_id": txn.get("category_id"),  # keep same category or map if changed
+                                "category_id": txn.get("category_id"),  # keep same category
                                 "date": new_date.isoformat()
                             }
                             try:
-                                upd_resp = requests.put(f"{BASE_URL}/transactions/update/{txn_id}", json=payload)
+                                upd_resp = requests.put(f"{BASE_URL}/transactions/update/{txn_id}", json=payload, headers=headers)
                                 if upd_resp.status_code == 200:
                                     st.success("Transaction updated successfully!")
-                                    st.rerun()
+                                    st.experimental_rerun()
                                 else:
                                     st.error(upd_resp.json().get("detail", "Failed to update transaction."))
                             except Exception as e:
                                 st.error(f"Server error: {e}")
 
         else:
-            st.error("Failed to fetch transactions.")
+            st.error("Failed to fetch transactions from server.")
+            transactions = []
+
     except Exception as e:
         st.error(f"Server error: {e}")
+        transactions = []
 
-
-    # --- Create a new transaction ---
-    st.subheader("Add Transaction")
+    # ---------------------------
+    # Add new transaction
+    # ---------------------------
+    st.subheader("➕ Add Transaction")
     with st.form("add_transaction"):
-        categories = get_categories() 
+        categories = get_categories()
         category_names = [cat['name'] for cat in categories]
         selected_name = st.selectbox("Category", category_names)
         category_id = next((cat['id'] for cat in categories if cat['name'] == selected_name), None)
@@ -122,86 +136,77 @@ def transactions_page(user_id):
 
         if submitted:
             payload = {
-                "user_id": user_id,
                 "category_id": category_id,
                 "amount": amount,
                 "description": description,
-                "date": str(trans_date)
+                "date": trans_date.isoformat()
             }
-            response = requests.post(BASE_URL + "transactions"+ "/", json=payload)
-            if response.status_code == 200:
-                st.success("Transaction added successfully!")
-            else:
-                st.error("Failed to add transaction.")
+            try:
+                response = requests.post(f"{BASE_URL}/transactions/", json=payload, headers=headers)
+                if response.status_code == 200:
+                    st.success("Transaction added successfully!")
+                    st.experimental_rerun()
+                else:
+                    st.error(response.json().get("detail", "Failed to add transaction."))
+            except Exception as e:
+                st.error(f"Server error: {e}")
 
+    # ---------------------------
+    # Filter by category
+    # ---------------------------
     st.subheader("🔍 Filter Transactions by Category")
-
-    # Fetch categories
     categories = get_categories()
-    category_names = [cat['name'] for cat in categories]
-    selected_name = st.selectbox("Category", category_names)
+    category_names = ["All"] + [cat['name'] for cat in categories]
+    selected_name = st.selectbox("Category", category_names, key="filter_category")
     category_id = next((cat['id'] for cat in categories if cat['name'] == selected_name), None)
 
     if st.button("Get Transactions by Category"):
         try:
-            response = requests.get(BASE_URL + f"/transactions/by-category?user_id={user_id}&category_id={category_id}")
+            url = f"{BASE_URL}/transactions/by-category?category_id={category_id}" if selected_name != "All" else f"{BASE_URL}/transactions/me"
+            response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 transactions = response.json()
-                
                 if not transactions:
-                    st.info("No transactions found for this category.")
+                    st.info("No transactions found.")
                 else:
                     st.subheader(f"Transactions for '{selected_name}'")
-                    
-                    # Table headers
-                    cols = st.columns([3, 1, 2])  # Adjust width as needed
-                    headers = ["Description", "Amount", "Date"]
-                    for col, header in zip(cols, headers):
+                    cols = st.columns([3, 1, 2])
+                    headers_list = ["Description", "Amount", "Date"]
+                    for col, header in zip(cols, headers_list):
                         col.markdown(f"**{header}**")
-                    
-                    # Display each transaction
-                    for txn in transactions:
-                        description = txn.get("description", "")
-                        amount = txn.get("amount", 0)
-                        date_str = txn.get("date", "")
 
+                    for txn in transactions:
                         col1, col2, col3 = st.columns([3, 1, 2])
-                        col1.write(description)
-                        col2.write(f"${amount}")
-                        col3.write(date_str)
+                        col1.write(txn.get("description", ""))
+                        col2.write(f"${txn.get('amount', 0)}")
+                        col3.write(txn.get("date", ""))
+
             else:
-                st.error("No transactions found for this category.")
+                st.error("Failed to fetch transactions by category.")
         except Exception as e:
             st.error(f"Server error: {e}")
 
-
-
-    # --- Filter transactions by date ---
-    st.subheader("Filter Transactions by Date")
+    # ---------------------------
+    # Filter by date
+    # ---------------------------
+    st.subheader("📅 Filter Transactions by Date")
     start_date = st.date_input("Start Date", date.today())
     end_date = st.date_input("End Date", date.today(), key="end_date_filter")
 
     if st.button("Get Transactions by Date"):
         try:
-            response = requests.get(
-                BASE_URL + f"/transactions/by-date?start_date={start_date}&end_date={end_date}"
-            )
-
+            response = requests.get(f"{BASE_URL}/transactions/by-date?start_date={start_date}&end_date={end_date}", headers=headers)
             if response.status_code == 200:
                 transactions = response.json()
-
                 if not transactions:
                     st.info("No transactions found in this range.")
                 else:
                     st.subheader(f"Transactions from {start_date} to {end_date}")
-
-                    # Display headers
                     cols = st.columns([2, 1, 1, 1, 1])
-                    headers = ["Title", "Amount", "Category", "Date", "Action"]
-                    for col, header in zip(cols, headers):
+                    headers_list = ["Title", "Amount", "Category", "Date", "Action"]
+                    for col, header in zip(cols, headers_list):
                         col.markdown(f"**{header}**")
-
-                    # Display each transaction
+                    
                     for i, txn in enumerate(transactions):
                         txn_id = txn.get("id")
                         title = txn.get("description", "")
@@ -215,10 +220,9 @@ def transactions_page(user_id):
                         col3.write(category)
                         col4.write(date_str)
 
-                        # Unique keys for Delete/Update buttons
                         if col5.button("Delete", key=f"del_date_{i}_{txn_id}"):
                             try:
-                                del_resp = requests.delete(f"{BASE_URL}/transactions/delete/{txn_id}")
+                                del_resp = requests.delete(f"{BASE_URL}/transactions/delete/{txn_id}", headers=headers)
                                 if del_resp.status_code == 200:
                                     st.success(f"Transaction {txn_id} deleted successfully!")
                                     st.experimental_rerun()
@@ -239,11 +243,11 @@ def transactions_page(user_id):
                                     payload = {
                                         "description": new_desc,
                                         "amount": new_amount,
-                                        "category_id": txn.get("category_id"),  # keep same category
+                                        "category_id": txn.get("category_id"),
                                         "date": new_date.isoformat()
                                     }
                                     try:
-                                        upd_resp = requests.put(f"{BASE_URL}/transactions/update/{txn_id}", json=payload)
+                                        upd_resp = requests.put(f"{BASE_URL}/transactions/update/{txn_id}", json=payload, headers=headers)
                                         if upd_resp.status_code == 200:
                                             st.success("Transaction updated successfully!")
                                             st.experimental_rerun()
@@ -252,7 +256,5 @@ def transactions_page(user_id):
                                     except Exception as e:
                                         st.error(f"Server error: {e}")
 
-            else:
-                st.error("No transactions found in this range.")
         except Exception as e:
             st.error(f"Server error: {e}")

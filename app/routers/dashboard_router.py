@@ -4,13 +4,13 @@ from datetime import datetime, date
 from typing import List
 from app.database import get_db
 from app.models.tables import transaction_model, budget_model, category_model
-from app.models.tables import user_model
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/dashboard", tags=['Dashboard'])
 
 # --- Dashboard KPIs: Balance, Income, Expenses, Remaining Budget ---
 @router.get("/kpis/")
-def get_dashboard_kpis(user_id: int, month: str = None, db: Session = Depends(get_db)):
+def get_dashboard_kpis( month: str = None, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user)):
     """
     Returns key KPIs for a user: total balance, income, expenses, remaining budget
     """
@@ -25,7 +25,7 @@ def get_dashboard_kpis(user_id: int, month: str = None, db: Session = Depends(ge
 
     # Transactions
     transactions = db.query(transaction_model).filter(
-        transaction_model.user_id == user_id,
+        transaction_model.user_id == current_user_id,
         transaction_model.date >= start,
         transaction_model.date < end
     ).all()
@@ -36,7 +36,7 @@ def get_dashboard_kpis(user_id: int, month: str = None, db: Session = Depends(ge
 
     # Budget
     budgets = db.query(budget_model).filter(
-        budget_model.user_id == user_id,
+        budget_model.user_id == current_user_id,
         budget_model.month == month
     ).all()
     total_budget = sum(b.monthly_limit for b in budgets)
@@ -58,7 +58,7 @@ def get_dashboard_kpis(user_id: int, month: str = None, db: Session = Depends(ge
 
 # --- Expense by Category ---
 @router.get("/expenses-category/")
-def get_expenses_by_category(user_id: int, start_date: date = None, end_date: date = None, db: Session = Depends(get_db)):
+def get_expenses_by_category(start_date: date = None, end_date: date = None, db: Session = Depends(get_db),current_user_id: int = Depends(get_current_user)):
     if not start_date:
         start_date = date.today().replace(day=1)
     if not end_date:
@@ -69,7 +69,7 @@ def get_expenses_by_category(user_id: int, start_date: date = None, end_date: da
 
     for cat in categories:
         transactions = db.query(transaction_model).filter(
-            transaction_model.user_id == user_id,
+            transaction_model.user_id == current_user_id,
             transaction_model.category_id == cat.id,
             transaction_model.date >= start_date,
             transaction_model.date <= end_date,
@@ -85,14 +85,14 @@ def get_expenses_by_category(user_id: int, start_date: date = None, end_date: da
 
 # --- Income vs Expenses Over Time ---
 @router.get("/income-expenses/")
-def get_income_expenses_over_time(user_id: int, start_date: date = None, end_date: date = None, db: Session = Depends(get_db)):
+def get_income_expenses_over_time(start_date: date = None, end_date: date = None, db: Session = Depends(get_db),current_user_id: int = Depends(get_current_user)):
     if not start_date:
         start_date = date.today().replace(day=1)
     if not end_date:
         end_date = date.today()
 
     transactions = db.query(transaction_model).filter(
-        transaction_model.user_id == user_id,
+        transaction_model.user_id == current_user_id,
         transaction_model.date >= start_date,
         transaction_model.date <= end_date
     ).all()
@@ -111,9 +111,9 @@ def get_income_expenses_over_time(user_id: int, start_date: date = None, end_dat
 
 # --- Latest Transactions ---
 @router.get("/latest/")
-def get_latest_transactions(user_id: int, limit: int = 5, db: Session = Depends(get_db)):
+def get_latest_transactions(limit: int = 5, db: Session = Depends(get_db),current_user_id: int = Depends(get_current_user)):
     transactions = db.query(transaction_model).filter(
-        transaction_model.user_id == user_id
+        transaction_model.user_id == current_user_id
     ).order_by(transaction_model.date.desc()).limit(limit).all()
 
     result = []
@@ -128,7 +128,7 @@ def get_latest_transactions(user_id: int, limit: int = 5, db: Session = Depends(
     return result
 
 @router.get("/budget-category/")
-def get_budget_vs_spent_by_category(user_id: int, month: str = None, db: Session = Depends(get_db)):
+def get_budget_vs_spent_by_category(month: str = None, db: Session = Depends(get_db),current_user_id: int = Depends(get_current_user)):
     """
     Returns the budget vs spent for each category for a user for a given month.
     If month is not provided, defaults to current month.
@@ -150,7 +150,7 @@ def get_budget_vs_spent_by_category(user_id: int, month: str = None, db: Session
 
     # Fetch all budgets for this user and month
     budgets = db.query(budget_model).filter(
-        budget_model.user_id == user_id,
+        budget_model.user_id == current_user_id,
         budget_model.month == month
     ).all()
 
@@ -161,7 +161,7 @@ def get_budget_vs_spent_by_category(user_id: int, month: str = None, db: Session
     for b in budgets:
         # Compute total spent for this category
         transactions = db.query(transaction_model).filter(
-            transaction_model.user_id == user_id,
+            transaction_model.user_id == current_user_id,
             transaction_model.category_id == b.category_id,
             transaction_model.date >= start_date,
             transaction_model.date < end_date,
@@ -186,7 +186,7 @@ def get_budget_vs_spent_by_category(user_id: int, month: str = None, db: Session
         })
 
     return {
-        "user_id": user_id,
+        "user_id": current_user_id,
         "month": month,
         "budgets": result
     }
