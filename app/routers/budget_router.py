@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schema.budget_schema import BudgetCreate
+from app.schema.budget_schema import BudgetCreate, ResponseModel
 from app.models.tables import budget_model, transaction_model
 from datetime import datetime
 from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/budget",tags=['Budget'])
 
+    
 @router.post("/create-or-update/")
 async def create_or_update_budget(budget: BudgetCreate, db: Session = Depends(get_db), current_user_id: int = Depends(get_current_user)):
     """
@@ -25,20 +26,15 @@ async def create_or_update_budget(budget: BudgetCreate, db: Session = Depends(ge
         existing_budget.monthly_limit = budget.monthly_limit
         db.commit()
         db.refresh(existing_budget)
-        return {"message": "Budget updated successfully", "budget": existing_budget}
+        return ResponseModel(Message="Updated Budget successfully", Data=existing_budget, StatusCode=status.HTTP_200_OK)
 
     # Create new budget
-    new_budget = budget_model(
-    user_id=current_user_id,
-    category_id=budget.category_id,
-    month=budget.month,
-    monthly_limit=budget.monthly_limit
-    )
+    new_budget = budget_model(**existing_budget.model_dump(exclude_unset=True), user_id=current_user_id)
     db.add(new_budget)
     db.commit()
     db.refresh(new_budget)
 
-    return {"message": "Budget added successfully", "budget": new_budget}
+    return ResponseModel(Message="Budget added successfully", Data=new_budget, StatusCode=status.HTTP_200_OK)
 
 
 def compute_budget_status(category_id: int, month: str, db: Session, current_user_id: int = Depends(get_current_user)):
@@ -77,7 +73,7 @@ def compute_budget_status(category_id: int, month: str, db: Session, current_use
     }
 
 @router.get("/monthly-status/")
-def get_monthly_budgets( month: str, db: Session = Depends(get_db),current_user_id: int = Depends(get_current_user)):
+async def get_monthly_budgets( month: str, db: Session = Depends(get_db),current_user_id: int = Depends(get_current_user)):
     budgets = db.query(budget_model).filter(
         budget_model.user_id == current_user_id,
         budget_model.month == month
@@ -85,7 +81,7 @@ def get_monthly_budgets( month: str, db: Session = Depends(get_db),current_user_
 
     results = []
     for b in budgets:
-        status = compute_budget_status(current_user_id, b.category_id, month, db)
+        status = compute_budget_status(b.category_id, month, db, current_user_id)
         if status:
             results.append(status)
 

@@ -8,3 +8,12 @@ class BudgetCreate(BaseModel):
 
     class config:
         from_attribute = True
+
+class ResponseModel(BaseModel):
+    Message: str
+    Data : dict
+    StatusCode : int
+
+    class config:
+        from_attribute = True
+        

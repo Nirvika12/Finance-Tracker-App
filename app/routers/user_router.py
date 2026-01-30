@@ -7,16 +7,8 @@ from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import jwt
 from app.routers.auth import get_current_user
-from dotenv import load_dotenv
-import os 
+from app.routers import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
-load_dotenv()
-
-SECRET_KEY_TOKEN = os.getenv("SECRET_KEY_TOKEN")
-
-SECRET_KEY = SECRET_KEY_TOKEN
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 router = APIRouter(prefix="/users",tags=['Users'])
 
