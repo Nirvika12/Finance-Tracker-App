@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 class TransactionsCreate(BaseModel):
    
-    user_id : int
+    #user_id : int
     category_id : int
     amount : float
     description : str | None = None

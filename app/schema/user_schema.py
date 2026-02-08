@@ -14,7 +14,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
-    password_hash: Optional[str] = None
+    password: Optional[str] = None
 
     class Config:
         from_attribute = True

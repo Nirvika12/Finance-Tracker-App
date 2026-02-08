@@ -1,7 +1,7 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class BudgetCreate(BaseModel):
-    user_id : int
     category_id : int
     monthly_limit : float
     month : str
@@ -9,11 +9,15 @@ class BudgetCreate(BaseModel):
     class config:
         from_attribute = True
 
-class ResponseModel(BaseModel):
-    Message: str
-    Data : dict
-    StatusCode : int
+class BudgetStatus(BaseModel):
+        category_id : int
+        amount: Optional[float] = 0.0
+        spent : Optional[float] = 0.0
+        remaining: Optional[float] = 0.0
+        progress: Optional[float] = 0.0
 
-    class config:
-        from_attribute = True
+class MonthlyBudgetResponse(BaseModel):
+    user_id: int
+    month: str
+    budgets: list[BudgetStatus]
         
