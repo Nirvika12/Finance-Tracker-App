@@ -5,14 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-db_user = os.getenv("POSTGRES_USER")
-db_password = os.getenv("POSTGRES_PASSWORD")
-db_host = os.getenv("DB_HOST", "db")  # default to docker service name
-db_name = os.getenv("POSTGRES_DB")
+#db_user = os.getenv("POSTGRES_USER")
+#db_password = os.getenv("POSTGRES_PASSWORD")
+#db_host = os.getenv("DB_HOST", "db")  # default to docker service name
+#db_name = os.getenv("POSTGRES_DB")
 
-db_config = f"postgresql://{db_user}:{db_password}@{db_host}:5432/{db_name}"
+#db_config = f"postgresql://{db_user}:{db_password}@{db_host}:5432/{db_name}"
 
-engine = create_engine(db_config)
+DATABASE_URL = os.getenv("DATABASE_URL") 
+
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
