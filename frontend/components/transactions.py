@@ -6,7 +6,8 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-BASE_URL = os.environ.get("API_URL")
+#BASE_URL = os.environ.get("API_URL")
+BASE_URL = st.secrets["API_URL"]
 
 st.set_page_config(layout="wide")
 
