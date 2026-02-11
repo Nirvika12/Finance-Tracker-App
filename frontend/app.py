@@ -117,17 +117,23 @@ def auth_page():
                         timeout=5,
                     )
 
-                    if login_response.status_code == 200:
-                        st.session_state.token = login_response.json()["data"]["access_token"]
+                    try:
+                        resp_json = login_response.json()
+                    except ValueError:
+                        resp_json = {}
+                
+                    if login_response.status_code == 200 and "data" in resp_json:
+                        st.session_state.token = resp_json["data"]["access_token"]
                         cookies["token"] = st.session_state.token
                         cookies.save()
                         st.success("Login successful 🎉")
                         st.rerun()
                     else:
-                        st.error(login_response.json().get("detail", "Invalid email or password"))
-
-                except Exception as e:
-                    st.error(f"⚠️ Server error: {e}")
+                        # Fallback to detail or generic message
+                        st.error(resp_json.get("detail", "Invalid email or password"))
+                
+                except requests.exceptions.RequestException as e:
+                    st.error(f"⚠️ Network/server error: {e}")
 
     # ---------------- SIGNUP ----------------
     with tabs[1]:
