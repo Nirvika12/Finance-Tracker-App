@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = os.environ.get("API_URL")
+#BASE_URL = os.environ.get("API_URL")
+
+BASE_URL = st.secrets["API_URL"]
 
 def get_auth_headers():
     token = st.session_state.get("token")
