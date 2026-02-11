@@ -13,7 +13,9 @@ from streamlit_cookies_manager import EncryptedCookieManager
 # LOAD ENV
 # -------------------------------------------------
 load_dotenv()
-BASE_URL = os.getenv("API_URL")
+#BASE_URL = os.getenv("API_URL")
+BASE_URL = st.secrets["API_URL"]
+
 COOKIE_PASSWORD = os.getenv("COOKIE_PASSWORD")
 
 # -------------------------------------------------
